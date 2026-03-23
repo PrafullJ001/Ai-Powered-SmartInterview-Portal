@@ -1,7 +1,7 @@
 // src/firebaseConfig.js (This file MUST be correct!)
 
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithRedirect} from "firebase/auth";
 
 // Your web app's Firebase configuration (Using your actual values)
 const firebaseConfig = {
@@ -22,20 +22,11 @@ const googleProvider = new GoogleAuthProvider(); // Create Google Auth Provider
 // The function you want to use in Home.jsx
 const signInWithGoogle = async () => {
     try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const idToken = await result.user.getIdToken(); 
-        
-        return { user: result.user, idToken }; 
+        await signInWithRedirect(auth, googleProvider);
     } catch (error) {
         console.error("Google Login Error:", error.code, error.message);
-        
-        let errorMessage = "Authentication failed.";
-        if (error.code === 'auth/popup-closed-by-user') {
-            errorMessage = "Sign-in window closed. Please try again.";
-        }
-        alert(errorMessage);
-        
-        throw error; 
+        alert("Authentication failed.");
+        throw error;
     }
 };
 
