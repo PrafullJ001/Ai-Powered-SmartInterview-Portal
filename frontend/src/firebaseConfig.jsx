@@ -1,7 +1,7 @@
 // src/firebaseConfig.js (This file MUST be correct!)
 
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
 
 // Your web app's Firebase configuration (Using your actual values)
 const firebaseConfig = {
