@@ -5,7 +5,7 @@ import {
   generateQuestions,
   saveInterview,
   getInterviewResults,
-} from "../controllers/interviewAi.js";
+} from "../controllers/InterviewAi.js";
 
 const router = express.Router();
 
