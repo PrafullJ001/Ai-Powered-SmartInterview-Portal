@@ -291,13 +291,14 @@
 
 
 
+
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { motion, AnimatePresence } from "framer-motion"; 
 import { 
   LogIn, LogOut, CheckCircle2, Cpu, AlertCircle, Loader2, 
-  Code2, MessagesSquare, BarChart4, ShieldCheck, ChevronRight,
-  UserCircle2, Sparkles, Terminal, Globe, Zap, Target
+  UserCircle2, Sparkles, Terminal, ChevronRight, Globe, Code2, ShieldCheck, Zap,
+  MessagesSquare, BarChart4, Target
 } from "lucide-react";
 import { signInWithGoogle } from "../firebaseConfig"; 
 
@@ -326,6 +327,7 @@ export default function Home({ onGetStarted }) {
       if (!backendResponse.ok) throw new Error("Auth failed");
       const data = await backendResponse.json();
       
+      // Update data immediately so popup reads the name
       setUserData(data.user);
       localStorage.setItem("smart_interview_user", JSON.stringify(data.user));
 
@@ -333,11 +335,10 @@ export default function Home({ onGetStarted }) {
       setTimeout(() => {
         setStatusPopup(null);
         onGetStarted();
-      }, 3000);
+      }, 3500);
 
     } catch (error) {
       console.error(error);
-    } finally {
       setIsSigningIn(false);
     }
   };
@@ -348,58 +349,72 @@ export default function Home({ onGetStarted }) {
       localStorage.removeItem("smart_interview_user");
       setUserData(null);
       setStatusPopup(null);
-    }, 3000);
+      setIsSigningIn(false);
+    }, 3500);
   };
 
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "#fcfcfd", fontFamily: "'Inter', sans-serif" }}>
       
-      {/* --- FULL PAGE STATUS PATCH --- */}
+      {/* --- ENHANCED TOP POPUP (CONTAINED LINE) --- */}
       <AnimatePresence>
         {statusPopup && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
-            style={{ 
-              zIndex: 10000, 
-              background: statusPopup === 'login' ? "rgba(255, 255, 255, 0.98)" : "rgba(15, 23, 42, 0.98)", 
-              backdropFilter: "blur(20px)" 
-            }}
+            initial={{ y: -120, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -120, opacity: 0 }}
+            className="position-fixed top-0 start-0 w-100 d-flex justify-content-center" 
+            style={{ zIndex: 10000, paddingTop: '30px' }}
           >
-            {/* Top Progress Bar */}
-            <motion.div 
-              initial={{ width: 0 }} 
-              animate={{ width: "100%" }} 
-              transition={{ duration: 3, ease: "linear" }}
+            <div 
+              className="shadow-2xl rounded-5 d-flex align-items-center px-5 py-4 position-relative overflow-hidden"
               style={{ 
-                height: '12px', position: 'absolute', top: 0, left: 0, 
-                backgroundColor: statusPopup === 'login' ? '#10b981' : '#ef4444' 
-              }} 
-            />
-
-            <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-center p-5"
+                minWidth: '580px',
+                background: statusPopup === 'login' ? "white" : "#0f172a",
+                color: statusPopup === 'login' ? "#0f172a" : "white",
+                border: statusPopup === 'login' ? "1px solid #e2e8f0" : "1px solid #334155",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+              }}
             >
-              <div className={`mb-4 d-inline-flex p-5 rounded-circle shadow-lg ${statusPopup === 'login' ? 'bg-success bg-opacity-10 text-success' : 'bg-danger bg-opacity-10 text-danger'}`}>
-                {statusPopup === 'login' ? <CheckCircle2 size={120} strokeWidth={1.5} /> : <AlertCircle size={120} strokeWidth={1.5} />}
+              {/* Progress Line - Contained inside the popup floor */}
+              <motion.div 
+                initial={{ width: 0 }} 
+                animate={{ width: "100%" }} 
+                transition={{ duration: 3.5, ease: "linear" }}
+                style={{ 
+                  height: '6px', 
+                  position: 'absolute', 
+                  bottom: 0, 
+                  left: 0, 
+                  backgroundColor: statusPopup === 'login' ? '#10b981' : '#ef4444',
+                  zIndex: 2
+                }} 
+              />
+
+              <div className={`me-4 p-3 rounded-circle ${statusPopup === 'login' ? 'bg-success bg-opacity-10 text-success' : 'bg-danger bg-opacity-10 text-danger'}`}>
+                {statusPopup === 'login' ? <CheckCircle2 size={32} /> : <AlertCircle size={32} />}
               </div>
-              
-              <h1 className={`display-1 fw-black mb-3 ${statusPopup === 'login' ? 'text-dark' : 'text-white'}`}>
-                {statusPopup === 'login' ? 'Welcome Back' : 'Securely Logged Out'}
-              </h1>
-              <p className={`fs-2 mb-0 fw-light ${statusPopup === 'login' ? 'text-secondary' : 'text-white opacity-75'}`}>
-                {statusPopup === 'login' ? `Authenticated as ${userData?.name}` : 'Finalizing your session security...'}
-              </p>
-              
-              <div className="mt-5">
-                <Loader2 className={`animate-spin ${statusPopup === 'login' ? 'text-primary' : 'text-danger'}`} size={40} />
+
+              <div className="flex-grow-1">
+                <div className="fw-black small text-uppercase mb-1 opacity-50" style={{ letterSpacing: '2px', fontSize: '10px' }}>
+                  {statusPopup === 'login' ? 'Identity Verified' : 'Security Protocol'}
+                </div>
+                <h4 className="fw-black mb-0">
+                  {statusPopup === 'login' 
+                    ? `Welcome Back, ${userData?.name}` 
+                    : 'Securely Logged Out'}
+                </h4>
+                <p className="mb-0 small opacity-75">
+                  {statusPopup === 'login' 
+                    ? 'Loading your personalized workspace...' 
+                    : 'Session terminated. All local cache cleared.'}
+                </p>
               </div>
-            </motion.div>
+
+              <div className="ms-4">
+                 <Loader2 className={`animate-spin ${statusPopup === 'login' ? 'text-success' : 'text-danger'}`} size={28} />
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -476,7 +491,7 @@ export default function Home({ onGetStarted }) {
         </div>
       </header>
 
-      {/* --- METHODOLOGY / PILLARS SECTION --- */}
+      {/* --- METHODOLOGY --- */}
       <section className="py-5 bg-light bg-opacity-50">
         <div className="container py-5">
             <div className="text-center mb-5">
@@ -509,7 +524,7 @@ export default function Home({ onGetStarted }) {
         </div>
       </section>
 
-      {/* --- TECHNICAL TRACKS SECTION --- */}
+      {/* --- TECHNICAL TRACKS --- */}
       <section className="py-5 bg-white">
         <div className="container py-5">
             <div className="row align-items-center">
@@ -544,20 +559,6 @@ export default function Home({ onGetStarted }) {
                         ))}
                     </div>
                 </div>
-            </div>
-        </div>
-      </section>
-
-      {/* --- FINAL CTA --- */}
-      <section className="py-5 mb-5">
-        <div className="container">
-            <div className="bg-primary rounded-5 p-5 text-center text-white shadow-2xl position-relative overflow-hidden">
-                <div className="position-absolute top-0 start-0 w-100 h-100 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-                <h2 className="display-4 fw-black mb-4">Secure your professional future.</h2>
-                <p className="fs-5 opacity-75 mb-5 mx-auto" style={{ maxWidth: '600px' }}>Join the community of developers who have successfully prepared for roles at FAANG and beyond.</p>
-                <button onClick={userData ? onGetStarted : handleGoogleAuth} className="btn btn-light btn-lg rounded-pill px-5 py-3 fw-black text-primary shadow-lg">
-                    Initialize Assessment Round
-                </button>
             </div>
         </div>
       </section>
