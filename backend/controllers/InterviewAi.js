@@ -4,19 +4,23 @@ dotenv.config();
 import Interview from "../models/Interview.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Initialize Gemini
+// ========================
+// ✅ GEMINI INITIALIZATION
+// ========================
 if (!process.env.GEMINI_API_KEY) {
     console.error("❌ CRITICAL: GEMINI_API_KEY is NULL.");
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-//  Correct Gemini model
+// ✅ Use stable model
 const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash"
 });
 
-
+// ========================
+// GENERATE QUESTIONS (DISABLED)
+// ========================
 export const generateQuestions = async (req, res) => {
     return res.status(501).json({
         success: false,
@@ -24,25 +28,29 @@ export const generateQuestions = async (req, res) => {
     });
 };
 
-
-// SAVE INTERVIEW + FEEDBACK
-
+// ========================
+// SAVE INTERVIEW + AI FEEDBACK
+// ========================
 export const saveInterview = async (req, res) => {
     try {
         console.log("🔥 save-interview endpoint hit");
 
         const { userId, role, questions } = req.body;
 
+        // ✅ Validation
         if (!userId || !role || !questions) {
             return res.status(400).json({
                 error: "Missing userId, role or questions"
             });
         }
 
+        console.log("📥 Questions received:", questions);
+
         const feedbacks = [];
 
-        // AI FEEDBACK LOOP
-        
+        // ========================
+        // 🔥 AI FEEDBACK LOOP
+        // ========================
         for (const qa of questions) {
             const prompt = `
 You are an expert interviewer.
@@ -60,25 +68,38 @@ Give feedback in 3 points:
             let aiText = "No AI feedback generated.";
 
             try {
-                // ⭐ Correct SDK usage for gemini-2.5-flash
+                console.log("🚀 Sending prompt to Gemini...");
+                console.log(prompt);
+
                 const result = await model.generateContent(prompt);
 
-                // ⭐ Correct output extraction
-                aiText = result.response.text().trim();
+                // ✅ FIXED RESPONSE EXTRACTION
+                const response = await result.response;
+                const text = response.text();
+
+                console.log("🧠 Gemini Response:", text);
+
+                if (text && text.trim() !== "") {
+                    aiText = text.trim();
+                } else {
+                    aiText = "AI returned empty response";
+                }
+
             } catch (error) {
-                console.error("❌ GEMINI ERROR:", error);
+                console.error("❌ GEMINI ERROR:", error.message);
+                aiText = "AI failed to generate feedback.";
             }
 
             feedbacks.push({
                 question: qa.question,
                 answer: qa.answer,
-                aiFeedback: aiText, //  This matches your DB field
+                aiFeedback: aiText,
             });
         }
 
- 
-        // SAVE TO MONGODB
-        
+        // ========================
+        // 💾 SAVE TO MONGODB
+        // ========================
         const interview = await Interview.create({
             userId,
             role,
@@ -102,9 +123,9 @@ Give feedback in 3 points:
     }
 };
 
-
+// ========================
 // FETCH INTERVIEW RESULTS
-
+// ========================
 export const getInterviewResults = async (req, res) => {
     try {
         const interview = await Interview.findById(req.params.id);
@@ -127,7 +148,3 @@ export const getInterviewResults = async (req, res) => {
         });
     }
 };
-
-
-
-
