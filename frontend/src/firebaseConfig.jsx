@@ -1,34 +1,42 @@
-// src/firebaseConfig.js (This file MUST be correct!)
-
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithRedirect} from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
-// Your web app's Firebase configuration (Using your actual values)
+// ✅ Using ENV variables
 const firebaseConfig = {
-    apiKey: "AIzaSyAzw-_Rk-1w86zfT1J0flxyMGWD1Q-idpE",
-    authDomain: "smartinterview-2540b.firebaseapp.com",
-    projectId: "smartinterview-2540b",
-    storageBucket: "smartinterview-2540b.firebasestorage.app",
-    messagingSenderId: "955435088764",
-    appId: "1:955435088764:web:8f8422c44caf6789b842f9",
-    measurementId: "G-XDB4DSKXZM"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementid: process.env.REACT_APP_MEASUREMENT_ID, 
 };
 
-// Initialize Firebase services
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app); // Initialize Authentication service
-const googleProvider = new GoogleAuthProvider(); // Create Google Auth Provider
 
-// The function you want to use in Home.jsx
+// Auth
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+// ✅ SAME LOGIC (unchanged)
 const signInWithGoogle = async () => {
-    try {
-        await signInWithRedirect(auth, googleProvider);
-    } catch (error) {
-        console.error("Google Login Error:", error.code, error.message);
-        alert("Authentication failed.");
-        throw error;
-    }
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+
+    // 🔥 IMPORTANT
+    const idToken = await user.getIdToken();
+
+    console.log("User Info:", user);
+    console.log("Token:", idToken);
+
+    return { user, idToken };
+  } catch (error) {
+    console.error("Google Login Error:", error);
+    alert(error.message);
+    throw error;
+  }
 };
 
-// 🌟 THE CRITICAL FIX: Use named export for both auth and signInWithGoogle 🌟
 export { auth, signInWithGoogle };
