@@ -86,7 +86,7 @@ Give feedback in 3 points:
                 }
 
             } catch (error) {
-                console.error("❌ GEMINI ERROR:", error.message);
+                console.error("❌ GEMINI ERROR:", error);
                 aiText = "AI failed to generate feedback.";
             }
 
