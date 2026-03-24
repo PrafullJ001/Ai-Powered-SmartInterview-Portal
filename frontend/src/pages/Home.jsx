@@ -318,7 +318,7 @@ export default function Home({ onGetStarted }) {
 
     try {
       const { user, idToken } = await signInWithGoogle();
-      const backendResponse = await fetch("http://localhost:5000/api/auth/google", {
+      const backendResponse = await fetch("https://ai-powered-smartinterview-portal-backend.onrender.com", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken }),
