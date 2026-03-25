@@ -11,9 +11,10 @@ if (!process.env.GEMINI_API_KEY) {
     console.error("❌ CRITICAL: GEMINI_API_KEY is NULL.");
 }
 
+console.log("🔑 API KEY LOADED:", process.env.GEMINI_API_KEY ? "YES" : "NO");
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ✅ Use stable model
 const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash"
 });
@@ -38,9 +39,9 @@ export const saveInterview = async (req, res) => {
         const { userId, role, questions } = req.body;
 
         // ✅ Validation
-        if (!userId || !role || !questions) {
+        if (!userId || !role || !questions || !Array.isArray(questions)) {
             return res.status(400).json({
-                error: "Missing userId, role or questions"
+                error: "Missing or invalid userId, role, or questions"
             });
         }
 
@@ -52,30 +53,48 @@ export const saveInterview = async (req, res) => {
         // 🔥 AI FEEDBACK LOOP
         // ========================
         for (const qa of questions) {
+
+            // Skip empty answers
+            if (!qa.answer || qa.answer.trim() === "") {
+                feedbacks.push({
+                    question: qa.question,
+                    answer: qa.answer,
+                    aiFeedback: "No answer provided by candidate."
+                });
+                continue;
+            }
+
             const prompt = `
-You are an expert interviewer.
-Evaluate the candidate's answer briefly.
+You are a strict technical interviewer.
 
 Question: ${qa.question}
 Candidate Answer: ${qa.answer}
 
-Give feedback in 3 points:
-1. Quality (Good / Average / Poor)
-2. Missing points
-3. How to improve
+Give structured feedback:
+
+1. Quality: (Good / Average / Poor)
+2. Missing Points:
+- point 1
+- point 2
+3. Improvement:
+- step 1
+- step 2
 `;
 
             let aiText = "No AI feedback generated.";
 
             try {
-                console.log("🚀 Sending prompt to Gemini...");
-                console.log(prompt);
+                console.log("🚀 Sending to Gemini...");
 
-                const result = await model.generateContent(prompt);
+                const result = await model.generateContent({
+                    contents: [
+                        {
+                            parts: [{ text: prompt }]
+                        }
+                    ]
+                });
 
-                // ✅ FIXED RESPONSE EXTRACTION
-                const response = await result.response;
-                const text = response.text();
+                const text = result.response.text();
 
                 console.log("🧠 Gemini Response:", text);
 
@@ -86,8 +105,16 @@ Give feedback in 3 points:
                 }
 
             } catch (error) {
-                console.error("❌ GEMINI ERROR:", error);
-                aiText = "AI failed to generate feedback.";
+                console.error("❌ GEMINI ERROR FULL:", error);
+
+                // Better debugging
+                if (error.message.includes("API key")) {
+                    aiText = "Invalid or expired API key.";
+                } else if (error.message.includes("quota")) {
+                    aiText = "API quota exceeded.";
+                } else {
+                    aiText = "AI failed to generate feedback.";
+                }
             }
 
             feedbacks.push({
@@ -116,6 +143,7 @@ Give feedback in 3 points:
 
     } catch (err) {
         console.error("❌ Error saving interview:", err);
+
         return res.status(500).json({
             success: false,
             error: err.message,
@@ -143,6 +171,7 @@ export const getInterviewResults = async (req, res) => {
 
     } catch (error) {
         console.error("❌ Error fetching interview:", error);
+
         return res.status(500).json({
             error: error.message
         });
