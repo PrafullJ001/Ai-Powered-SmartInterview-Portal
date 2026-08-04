@@ -6,47 +6,72 @@ import {
   UserCircle2, Sparkles, Terminal, ChevronRight, Globe, Code2, ShieldCheck, Zap,
   MessagesSquare, BarChart4, Target
 } from "lucide-react";
-import { signInWithGoogle } from "../firebaseConfig";
+import { signInWithGoogle, handleGoogleRedirectResult } from "../firebaseConfig";
 
 export default function Home({ onGetStarted }) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [userData, setUserData] = useState(null);
   const [statusPopup, setStatusPopup] = useState(null);
 
+  // Load any previously saved user from localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem("smart_interview_user");
     if (savedUser) setUserData(JSON.parse(savedUser));
   }, []);
 
+  // ✅ fix: catch the result of signInWithRedirect after the page comes back
+  // from Google. This is the piece that was completely missing before.
+  useEffect(() => {
+    const finishRedirectLogin = async () => {
+      try {
+        const res = await handleGoogleRedirectResult();
+        if (res && res.user) {
+          setIsSigningIn(true);
+
+          const { idToken } = res;
+
+          const API_URL =
+            process.env.REACT_APP_API_URL ||
+            "https://ai-powered-smartinterview-portal.onrender.com";
+
+          const backendResponse = await fetch(`${API_URL}/api/auth/google`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          });
+
+          if (!backendResponse.ok) throw new Error("Auth failed");
+          const data = await backendResponse.json();
+
+          setUserData(data.user);
+          localStorage.setItem("smart_interview_user", JSON.stringify(data.user));
+
+          setStatusPopup('login');
+          setTimeout(() => {
+            setStatusPopup(null);
+            setIsSigningIn(false);
+            onGetStarted();
+          }, 3500);
+        }
+      } catch (error) {
+        console.error("Redirect login error:", error);
+        setIsSigningIn(false);
+      }
+    };
+
+    finishRedirectLogin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ✅ fix: this now only KICKS OFF the redirect — it does not expect
+  // a return value, since the page navigates away entirely.
   const handleGoogleAuth = async () => {
     if (isSigningIn) return;
     setIsSigningIn(true);
-
     try {
-      const { user, idToken } = await signInWithGoogle();
-
-      const API_URL =
-        process.env.REACT_APP_API_URL ||
-        "https://ai-powered-smartinterview-portal.onrender.com";
-
-      const backendResponse = await fetch(`${API_URL}/api/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!backendResponse.ok) throw new Error("Auth failed");
-      const data = await backendResponse.json();
-
-      setUserData(data.user);
-      localStorage.setItem("smart_interview_user", JSON.stringify(data.user));
-
-      setStatusPopup('login');
-      setTimeout(() => {
-        setStatusPopup(null);
-        onGetStarted();
-      }, 3500);
-
+      await signInWithGoogle();
+      // Execution stops here — browser navigates to Google.
+      // The result is picked up by the useEffect above after redirect.
     } catch (error) {
       console.error(error);
       setIsSigningIn(false);
