@@ -64,18 +64,19 @@ export default function Home({ onGetStarted }) {
 
   // ✅ fix: this now only KICKS OFF the redirect — it does not expect
   // a return value, since the page navigates away entirely.
-  const handleGoogleAuth = async () => {
-    if (isSigningIn) return;
-    setIsSigningIn(true);
-    try {
-      await signInWithGoogle();
-      // Execution stops here — browser navigates to Google.
-      // The result is picked up by the useEffect above after redirect.
-    } catch (error) {
-      console.error(error);
-      setIsSigningIn(false);
-    }
-  };
+const handleGoogleAuth = async () => {
+  console.log("BUTTON CLICKED");
+  if (isSigningIn) return;
+  setIsSigningIn(true);
+  try {
+    console.log("Calling signInWithGoogle...");
+    await signInWithGoogle();
+    console.log("signInWithGoogle resolved (should not reach here on redirect)");
+  } catch (error) {
+    console.error("Caught error:", error);
+    setIsSigningIn(false);
+  }
+};
 
   const handleLogout = () => {
     setStatusPopup('logout');
