@@ -1,9 +1,7 @@
-// src/firebaseConfig.js (This file MUST be correct!)
-
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
-// Your web app's Firebase configuration (Using your actual values)
+// Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAzw-_Rk-1w86zfT1J0flxyMGWD1Q-idpE",
     authDomain: "smartinterview-2540b.firebaseapp.com",
@@ -14,30 +12,39 @@ const firebaseConfig = {
     measurementId: "G-XDB4DSKXZM"
 };
 
-// Initialize Firebase services
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app); // Initialize Authentication service
-const googleProvider = new GoogleAuthProvider(); // Create Google Auth Provider
 
-// The function you want to use in Home.jsx
+// Initialize Auth
+const auth = getAuth(app);
+
+// Google Provider
+const googleProvider = new GoogleAuthProvider();
+
+// ✅ FINAL FIXED FUNCTION
 const signInWithGoogle = async () => {
     try {
         const result = await signInWithPopup(auth, googleProvider);
-        const idToken = await result.user.getIdToken(); 
-        
-        return { user: result.user, idToken }; 
+
+        const user = result.user;
+
+        // 🔥 IMPORTANT: GET ID TOKEN
+        const idToken = await user.getIdToken();
+
+        console.log("Logged in:", user.email);
+        console.log("ID Token received successfully");
+
+       
+
+        // ✅ RETURN BOTH
+        return { user, idToken };
+
     } catch (error) {
-        console.error("Google Login Error:", error.code, error.message);
-        
-        let errorMessage = "Authentication failed.";
-        if (error.code === 'auth/popup-closed-by-user') {
-            errorMessage = "Sign-in window closed. Please try again.";
-        }
-        alert(errorMessage);
-        
-        throw error; 
+        console.error("Google Login Error:", error);
+        alert("Authentication failed");
+        throw error;
     }
 };
 
-// 🌟 THE CRITICAL FIX: Use named export for both auth and signInWithGoogle 🌟
+// Export
 export { auth, signInWithGoogle };

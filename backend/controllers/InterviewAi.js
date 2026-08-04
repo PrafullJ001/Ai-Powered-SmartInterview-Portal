@@ -13,7 +13,17 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 //  Correct Gemini model
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite"
+    // gemini-2.5-flash is being phased out early (404s reported July 2026,
+    // ahead of its official Oct 16 2026 shutdown). Pinned to a current
+    // GA model instead of the "gemini-flash-latest" alias so behavior
+    // doesn't silently shift if Google swaps the alias target later.
+    model: "gemini-3.5-flash-lite",
+    generationConfig: {
+        // JSON mode: forces Gemini to return valid JSON, not prose,
+        // which is what makes single-prompt batching safe to parse.
+        responseMimeType: "application/json",
+        maxOutputTokens: 4096,
+    },
 });
 
 
@@ -22,6 +32,69 @@ export const generateQuestions = async (req, res) => {
         success: false,
         message: "generateQuestions is disabled. Static questions are used."
     });
+};
+
+
+// Small retry helper — only retries on transient errors (503 / 429),
+// not on real request problems (400, auth, etc).
+const withRetry = async (fn, retries = 3, delayMs = 1000) => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            return await fn();
+        } catch (err) {
+            const status = err?.status;
+            const retriable = status === 503 || status === 429;
+            if (!retriable || attempt === retries) throw err;
+            console.warn(`⚠️ Gemini ${status}, retrying (${attempt}/${retries - 1})...`);
+            await new Promise((r) => setTimeout(r, delayMs * attempt));
+        }
+    }
+};
+
+
+// Builds one single prompt covering every question, and asks Gemini
+// to return a strict JSON array so per-question feedback can be
+// mapped back out safely.
+const buildBatchPrompt = (questions) => {
+    const qaBlock = questions
+        .map((qa, i) => `${i + 1}. Question: ${qa.question}\n   Candidate Answer: ${qa.answer}`)
+        .join("\n\n");
+
+    return `
+You are an expert interviewer evaluating a candidate's mock interview answers.
+
+Below are ${questions.length} question/answer pairs. Evaluate EACH ONE independently.
+
+${qaBlock}
+
+Respond ONLY with valid JSON, no markdown, no extra text, in exactly this shape:
+{
+  "summary": "4-5 sentence overall performance summary across all answers",
+  "results": [
+    {
+      "question": "<exact question text repeated back>",
+      "quality": "Good | Average | Poor",
+      "missing": "what's missing from the answer",
+      "improve": "how to improve"
+    }
+  ]
+}
+
+The "results" array must contain exactly ${questions.length} items, in the same order as the questions above.
+`;
+};
+
+// Formats one parsed result item back into the same 3-point text
+// format the frontend's renderStructuredFeedback() already parses
+// (it looks for "quality"/"strength", "missing"/"weakness",
+// "improve"/"suggestion" keywords line by line).
+const formatFeedbackText = (item) => {
+    if (!item) return "No AI feedback generated.";
+    return [
+        `Quality: ${item.quality ?? "N/A"}`,
+        `Missing: ${item.missing ?? "N/A"}`,
+        `Improve: ${item.improve ?? "N/A"}`,
+    ].join("\n");
 };
 
 
@@ -39,46 +112,48 @@ export const saveInterview = async (req, res) => {
             });
         }
 
-        const feedbacks = [];
+        let feedbacks = [];
+        let summary = "Summary feedback placeholder.";
 
-        // AI FEEDBACK LOOP
-        
-        for (const qa of questions) {
-            const prompt = `
-You are an expert interviewer.
-Evaluate the candidate's answer briefly.
+        try {
+            const prompt = buildBatchPrompt(questions);
 
-Question: ${qa.question}
-Candidate Answer: ${qa.answer}
+            const result = await withRetry(() => model.generateContent(prompt));
+            const rawText = result.response.text().trim();
 
-Give feedback in 3 points:
-1. Quality (Good / Average / Poor)
-2. Missing points
-3. How to improve
-`;
+            const parsed = JSON.parse(rawText);
+            const results = Array.isArray(parsed?.results) ? parsed.results : [];
+            summary = parsed?.summary || summary;
 
-            let aiText = "No AI feedback generated.";
+            feedbacks = questions.map((qa, i) => {
+                // Match by index first (model was told to preserve order),
+                // fall back to matching by question text if it didn't.
+                const match =
+                    results[i]?.question === qa.question
+                        ? results[i]
+                        : results.find((r) => r.question === qa.question) || results[i];
 
-            try {
-                // ⭐ Correct SDK usage for gemini-2.5-flash
-                const result = await model.generateContent(prompt);
+                return {
+                    question: qa.question,
+                    answer: qa.answer,
+                    aiFeedback: formatFeedbackText(match),
+                };
+            });
+        } catch (error) {
+            console.error("❌ GEMINI ERROR:", error);
 
-                // ⭐ Correct output extraction
-                aiText = result.response.text().trim();
-            } catch (error) {
-                console.error("❌ GEMINI ERROR:", error);
-            }
-
-            feedbacks.push({
+            // Safe fallback: still save the interview even if Gemini
+            // failed or returned bad JSON, just without feedback.
+            feedbacks = questions.map((qa) => ({
                 question: qa.question,
                 answer: qa.answer,
-                aiFeedback: aiText, //  This matches your DB field
-            });
+                aiFeedback: "No AI feedback generated.",
+            }));
         }
 
- 
+
         // SAVE TO MONGODB
-        
+
         const interview = await Interview.create({
             userId,
             role,
@@ -90,6 +165,7 @@ Give feedback in 3 points:
         return res.status(200).json({
             success: true,
             interviewId: interview._id,
+            summary,
             interview,
         });
 
@@ -127,7 +203,3 @@ export const getInterviewResults = async (req, res) => {
         });
     }
 };
-
-
-
-
