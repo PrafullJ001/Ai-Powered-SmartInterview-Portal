@@ -50,7 +50,7 @@ export const getAIResults = async (userId, role, userAnswers) => {
 
     if (data?.interviewId) {
       localStorage.setItem("interviewId", data.interviewId);
-      console.log("💾 Interview ID stored:", data.interviewId);
+      //console.log("💾 Interview ID stored:", data.interviewId);
     }
 
     return data?.interview || {};

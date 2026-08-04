@@ -150,7 +150,7 @@ export default function QAPage_temp({ role: propRole }) {
 
       if (!userId || !currentRole) throw new Error("Missing session data.");
 
-      console.log("📤 Sending to backend:", {
+      console.log( {
         userId,
         role: currentRole,
         questions: interviewData
