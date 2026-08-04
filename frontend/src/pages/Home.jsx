@@ -27,7 +27,7 @@ export default function Home({ onGetStarted }) {
 
       const API_URL =
         process.env.REACT_APP_API_URL ||
-        "https://ai-powered-smartinterview-portal-backend.onrender.com";
+        "https://ai-powered-smartinterview-portal.onrender.com";
 
       const backendResponse = await fetch(`${API_URL}/api/auth/google`, {
         method: "POST",
