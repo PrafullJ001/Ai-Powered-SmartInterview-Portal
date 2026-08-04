@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { motion, AnimatePresence } from "framer-motion"; 
-import { 
-  LogIn, LogOut, CheckCircle2, Cpu, AlertCircle, Loader2, 
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  LogIn, LogOut, CheckCircle2, Cpu, AlertCircle, Loader2,
   UserCircle2, Sparkles, Terminal, ChevronRight, Globe, Code2, ShieldCheck, Zap,
   MessagesSquare, BarChart4, Target
 } from "lucide-react";
-import { signInWithGoogle } from "../firebaseConfig"; 
+import { signInWithGoogle } from "../firebaseConfig";
 
 export default function Home({ onGetStarted }) {
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [userData, setUserData] = useState(null); 
-  const [statusPopup, setStatusPopup] = useState(null); 
+  const [userData, setUserData] = useState(null);
+  const [statusPopup, setStatusPopup] = useState(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("smart_interview_user");
@@ -23,20 +23,21 @@ export default function Home({ onGetStarted }) {
     setIsSigningIn(true);
 
     try {
-  const { user, idToken } = await signInWithGoogle();
-  
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-  
-  const backendResponse = await fetch(`${API_URL}/api/auth/google`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken }),
-  });
-  
+      const { user, idToken } = await signInWithGoogle();
+
+      const API_URL =
+        process.env.REACT_APP_API_URL ||
+        "https://ai-powered-smartinterview-portal-backend.onrender.com";
+
+      const backendResponse = await fetch(`${API_URL}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
 
       if (!backendResponse.ok) throw new Error("Auth failed");
       const data = await backendResponse.json();
-      
+
       setUserData(data.user);
       localStorage.setItem("smart_interview_user", JSON.stringify(data.user));
 
@@ -64,38 +65,64 @@ export default function Home({ onGetStarted }) {
 
   return (
     <div className="min-vh-100 d-flex flex-column ui-bg-light" style={{ fontFamily: "'Inter', sans-serif" }}>
-      
-      {/* --- TOAST NOTIFICATION --- */}
+
+      {/* --- TOP POPUP --- */}
       <AnimatePresence>
         {statusPopup && (
-          <motion.div 
-            initial={{ y: -20, opacity: 0, scale: 0.95 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: -20, opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="position-fixed start-50 translate-middle-x mt-4" 
-            style={{ zIndex: 1050 }}
+          <motion.div
+            initial={{ y: -120, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -120, opacity: 0 }}
+            className="position-fixed top-0 start-0 w-100 d-flex justify-content-center"
+            style={{ zIndex: 10000, paddingTop: '30px' }}
           >
-            <div className="d-flex align-items-center bg-white shadow-lg rounded-3 p-3 border position-relative overflow-hidden" style={{ minWidth: '320px' }}>
-              <motion.div 
-                initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ duration: 3.5, ease: "linear" }}
-                className={`position-absolute bottom-0 start-0 ${statusPopup === 'login' ? 'bg-success' : 'bg-danger'}`}
-                style={{ height: '4px' }} 
+            <div
+              className="shadow-2xl rounded-5 d-flex align-items-center px-5 py-4 position-relative overflow-hidden"
+              style={{
+                minWidth: '580px',
+                background: statusPopup === 'login' ? "white" : "#0f172a",
+                color: statusPopup === 'login' ? "#0f172a" : "white",
+                border: statusPopup === 'login' ? "1px solid #e2e8f0" : "1px solid #334155",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+              }}
+            >
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 3.5, ease: "linear" }}
+                style={{
+                  height: '6px',
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  backgroundColor: statusPopup === 'login' ? '#10b981' : '#ef4444',
+                  zIndex: 2
+                }}
               />
-              <div className="me-3">
-                {statusPopup === 'login' 
-                  ? <CheckCircle2 size={24} className="text-success" /> 
-                  : <AlertCircle size={24} className="text-danger" />}
+
+              <div className={`me-4 p-3 rounded-circle ${statusPopup === 'login' ? 'bg-success bg-opacity-10 text-success' : 'bg-danger bg-opacity-10 text-danger'}`}>
+                {statusPopup === 'login' ? <CheckCircle2 size={32} /> : <AlertCircle size={32} />}
               </div>
+
               <div className="flex-grow-1">
-                <div className="fw-bold fs-6 text-dark">
-                  {statusPopup === 'login' ? `Welcome, ${userData?.name}` : 'Logged out'}
+                <div className="fw-black small text-uppercase mb-1 opacity-50" style={{ letterSpacing: '2px', fontSize: '10px' }}>
+                  {statusPopup === 'login' ? 'Identity Verified' : 'Security Protocol'}
                 </div>
-                <div className="text-muted small">
-                  {statusPopup === 'login' ? 'Opening your workspace...' : 'See you next time.'}
-                </div>
+                <h4 className="fw-black mb-0">
+                  {statusPopup === 'login'
+                    ? `Welcome Back, ${userData?.name}`
+                    : 'Securely Logged Out'}
+                </h4>
+                <p className="mb-0 small opacity-75">
+                  {statusPopup === 'login'
+                    ? 'Loading your personalized workspace...'
+                    : 'Session terminated. All local cache cleared.'}
+                </p>
               </div>
-              <Loader2 className={`animate-spin ms-3 ${statusPopup === 'login' ? 'text-success' : 'text-danger'}`} size={18} />
+
+              <div className="ms-4">
+                 <Loader2 className={`animate-spin ${statusPopup === 'login' ? 'text-success' : 'text-danger'}`} size={28} />
+              </div>
             </div>
           </motion.div>
         )}
@@ -134,7 +161,7 @@ export default function Home({ onGetStarted }) {
         </div>
       </nav>
 
-      {/* --- HERO SECTION --- */}
+      {/* --- HERO --- */}
       <header className="py-5 hero-bg border-bottom">
         <div className="container py-5">
           <div className="row align-items-center g-5">
@@ -154,7 +181,7 @@ export default function Home({ onGetStarted }) {
                 </button>
               </motion.div>
             </div>
-            
+
             <div className="col-lg-6">
                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}>
                  <div className="card border-0 modern-terminal-shadow rounded-4 overflow-hidden p-4" style={{ backgroundColor: '#0f172a', color: '#f8fafc' }}>
@@ -178,7 +205,7 @@ export default function Home({ onGetStarted }) {
       </header>
 
       {/* --- METHODOLOGY --- */}
-      <section className="py-5 bg-white">
+      <section className="py-5 bg-light bg-opacity-50">
         <div className="container py-5">
             <div className="text-center mb-5">
                 <h2 className="display-6 fw-bold text-dark mb-3">How It Works</h2>
@@ -223,7 +250,7 @@ export default function Home({ onGetStarted }) {
       </section>
 
       {/* --- TECHNICAL TRACKS --- */}
-      <section className="py-5 hero-bg border-top">
+      <section className="py-5 bg-white">
         <div className="container py-5">
             <div className="row align-items-center g-5">
                 <div className="col-lg-5">
@@ -269,8 +296,7 @@ export default function Home({ onGetStarted }) {
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        
-        /* Modern Color Variables */
+
         :root {
           --indigo-600: #4f46e5;
           --fuchsia-500: #d946ef;
@@ -278,7 +304,6 @@ export default function Home({ onGetStarted }) {
           --slate-900: #0f172a;
         }
 
-        /* Custom Gradients & Text */
         .text-gradient {
           background: linear-gradient(135deg, var(--indigo-600) 0%, var(--fuchsia-500) 100%);
           -webkit-background-clip: text;
@@ -287,25 +312,22 @@ export default function Home({ onGetStarted }) {
         .bg-gradient-primary {
           background: linear-gradient(135deg, var(--indigo-600) 0%, #7c3aed 100%);
         }
-        
-        /* Layout Backgrounds */
+
         .ui-bg-light { background-color: #f8fafc; }
         .hero-bg {
           background: linear-gradient(180deg, #f1f5f9 0%, #ffffff 100%);
         }
 
-        /* Modern Accent Colors */
         .badge-soft-indigo { background-color: #e0e7ff; color: var(--indigo-600); }
         .border-indigo-subtle { border-color: #c7d2fe !important; }
-        
+
         .icon-box-indigo { background-color: #e0e7ff; color: var(--indigo-600); }
         .icon-box-emerald { background-color: #d1fae5; color: var(--emerald-500); }
         .icon-box-fuchsia { background-color: #fae8ff; color: var(--fuchsia-500); }
-        
+
         .text-indigo { color: #818cf8; }
         .text-emerald { color: #34d399; }
 
-        /* Button & Card Enhancements */
         .modern-dark-btn {
           background-color: var(--slate-900);
           border: none;
@@ -313,15 +335,14 @@ export default function Home({ onGetStarted }) {
         .modern-terminal-shadow {
           box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.5);
         }
-        
-        /* Animations */
+
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        
+
         .hover-lift, .btn-hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-        .hover-lift:hover, .btn-hover-lift:hover { 
-          transform: translateY(-4px); 
-          box-shadow: 0 1rem 3rem rgba(0,0,0,.08)!important; 
+        .hover-lift:hover, .btn-hover-lift:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 1rem 3rem rgba(0,0,0,.08)!important;
         }
       `}</style>
     </div>
