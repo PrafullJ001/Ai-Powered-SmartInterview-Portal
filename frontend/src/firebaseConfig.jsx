@@ -23,8 +23,8 @@ const signInWithGoogle = async () => {
     const user = result.user;
     const idToken = await user.getIdToken();
 
-    console.log("User Info:", user);
-    console.log("Token:", idToken);
+    //console.log("User Info:", user);
+    //console.log("Token:", idToken);
 
     return { user, idToken };
   } catch (error) {
