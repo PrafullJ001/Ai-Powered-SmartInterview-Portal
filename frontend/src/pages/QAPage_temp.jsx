@@ -159,6 +159,7 @@ export default function QAPage_temp({ role: propRole }) {
       await getAIResults(userId, currentRole, interviewData);
 
       localStorage.setItem("tempInterviewData", JSON.stringify(interviewData));
+      localStorage.setItem("tempInterviewRole", currentRole); // ✅ fix: save role so ResultPage shows correct domain
 
       setTimeout(() => navigate("/result"), 2500);
 

@@ -45,7 +45,9 @@ const withRetry = async (fn, retries = 3, delayMs = 1000) => {
   }
 };
 
-// Builds ONE prompt covering every question, asks Gemini for strict JSON
+// Builds ONE prompt covering every question, asks Gemini for strict JSON.
+// "missing" and "improve" are now arrays so the frontend can render
+// them as separate bullet points instead of one paragraph.
 const buildBatchPrompt = (questions) => {
   const qaBlock = questions
     .map((qa, i) => `${i + 1}. Question: ${qa.question}\n   Candidate Answer: ${qa.answer}`)
@@ -65,24 +67,37 @@ Respond ONLY with valid JSON, no markdown, no extra text, in exactly this shape:
     {
       "question": "<exact question text repeated back>",
       "quality": "Good | Average | Poor",
-      "missing": "what's missing from the answer",
-      "improve": "how to improve"
+      "missing": ["3 to 4 short bullet points, each a distinct missing point from the answer"],
+      "improve": ["3 short bullet points, each a distinct actionable improvement tip"]
     }
   ]
 }
 
+The "missing" and "improve" fields MUST be JSON arrays of short strings (not a single paragraph).
 The "results" array must contain exactly ${questions.length} items, in the same order as the questions above.
 `;
 };
 
-// Formats one parsed result item into the 3-point text format
-// the frontend's renderStructuredFeedback() parses
+// Formats one parsed result item into the multi-line bullet format
+// the frontend's renderStructuredFeedback() parses line by line.
 const formatFeedbackText = (item) => {
   if (!item) return "No AI feedback generated.";
+
+  const toPoints = (val) => {
+    if (Array.isArray(val) && val.length > 0) return val;
+    if (typeof val === "string" && val.trim() !== "") return [val];
+    return ["N/A"];
+  };
+
+  const missingPoints = toPoints(item.missing);
+  const improvePoints = toPoints(item.improve);
+
   return [
     `Quality: ${item.quality ?? "N/A"}`,
-    `Missing: ${item.missing ?? "N/A"}`,
-    `Improve: ${item.improve ?? "N/A"}`,
+    `Missing:`,
+    ...missingPoints.map((p) => `- ${p}`),
+    `Improve:`,
+    ...improvePoints.map((p) => `- ${p}`),
   ].join("\n");
 };
 
