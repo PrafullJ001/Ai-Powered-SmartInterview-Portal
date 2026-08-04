@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { generateAIFeedback } from "../api/ai"; 
 import { useNavigate } from "react-router-dom"; 
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,7 +29,16 @@ export default function ResultPage() {
   const [hasFetched, setHasFetched] = useState(false); 
   const [isGeneratingClicked, setIsGeneratingClicked] = useState(false); 
 
+  // ✅ fix: guard against double-invocation of this effect (e.g. React StrictMode
+  // in development, or remounts) reading localStorage AFTER it has already been
+  // cleared by the first run — which was causing role to silently fall back to
+  // "General" for every domain.
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
     const data = JSON.parse(localStorage.getItem("tempInterviewData") || "[]");
     const savedRole = localStorage.getItem("tempInterviewRole") || "General"; 
 
