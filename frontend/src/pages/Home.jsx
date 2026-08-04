@@ -60,8 +60,7 @@ export default function Home({ onGetStarted }) {
     };
 
     finishRedirectLogin();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+}, []);
 
   // ✅ fix: this now only KICKS OFF the redirect — it does not expect
   // a return value, since the page navigates away entirely.
