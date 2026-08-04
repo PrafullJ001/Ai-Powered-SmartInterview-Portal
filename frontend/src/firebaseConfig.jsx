@@ -4,6 +4,8 @@ import {
   GoogleAuthProvider,
   signInWithRedirect,
   getRedirectResult,
+  setPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -17,11 +19,15 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
 const auth = getAuth(app);
+
+// Force localStorage-based persistence instead of IndexedDB
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error("Persistence setup error:", error);
+});
+
 const googleProvider = new GoogleAuthProvider();
 
-// Starts the redirect flow — navigates the whole page to Google, then back.
 const signInWithGoogle = async () => {
   try {
     await signInWithRedirect(auth, googleProvider);
@@ -32,8 +38,6 @@ const signInWithGoogle = async () => {
   }
 };
 
-// Call this once on app load (e.g. in App.js / a top-level useEffect)
-// to pick up the result after the redirect comes back.
 const handleGoogleRedirectResult = async () => {
   try {
     const result = await getRedirectResult(auth);
