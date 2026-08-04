@@ -2,8 +2,7 @@ import { initializeApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   setPersistence,
   browserLocalPersistence,
 } from "firebase/auth";
@@ -15,7 +14,7 @@ const firebaseConfig = {
   storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementid: process.env.REACT_APP_MEASUREMENT_ID,
+  measurementId: process.env.REACT_APP_MEASUREMENT_ID, // fixed casing
 };
 
 const app = initializeApp(firebaseConfig);
@@ -28,9 +27,14 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 
 const googleProvider = new GoogleAuthProvider();
 
+// Uses a popup instead of a full-page redirect so it works inside
+// iframes / sandboxed preview environments where signInWithRedirect
+// silently hangs (top-level navigation gets blocked).
 const signInWithGoogle = async () => {
   try {
-    await signInWithRedirect(auth, googleProvider);
+    const result = await signInWithPopup(auth, googleProvider);
+    const idToken = await result.user.getIdToken();
+    return { user: result.user, idToken };
   } catch (error) {
     console.error("Google Login Error:", error);
     alert(error.message);
@@ -38,19 +42,4 @@ const signInWithGoogle = async () => {
   }
 };
 
-const handleGoogleRedirectResult = async () => {
-  try {
-    const result = await getRedirectResult(auth);
-    if (result) {
-      const user = result.user;
-      const idToken = await user.getIdToken();
-      return { user, idToken };
-    }
-    return null;
-  } catch (error) {
-    console.error("Google Redirect Error:", error);
-    throw error;
-  }
-};
-
-export { auth, signInWithGoogle, handleGoogleRedirectResult };
+export { auth, signInWithGoogle };

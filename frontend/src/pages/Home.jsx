@@ -6,7 +6,7 @@ import {
   UserCircle2, Sparkles, Terminal, ChevronRight, Globe, Code2, ShieldCheck, Zap,
   MessagesSquare, BarChart4, Target
 } from "lucide-react";
-import { signInWithGoogle, handleGoogleRedirectResult } from "../firebaseConfig";
+import { signInWithGoogle } from "../firebaseConfig";
 
 export default function Home({ onGetStarted }) {
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -19,64 +19,42 @@ export default function Home({ onGetStarted }) {
     if (savedUser) setUserData(JSON.parse(savedUser));
   }, []);
 
-  // ✅ fix: catch the result of signInWithRedirect after the page comes back
-  // from Google. This is the piece that was completely missing before.
-  useEffect(() => {
-    const finishRedirectLogin = async () => {
-      try {
-        const res = await handleGoogleRedirectResult();
-        if (res && res.user) {
-          setIsSigningIn(true);
+  // Popup-based sign in: opens a Google popup, gets the ID token,
+  // sends it to the backend, and updates local state — all in one
+  // click handler. No redirect-result effect needed anymore.
+  const handleGoogleAuth = async () => {
+    if (isSigningIn) return;
+    setIsSigningIn(true);
+    try {
+      const { user, idToken } = await signInWithGoogle();
 
-          const { idToken } = res;
+      const API_URL =
+        process.env.REACT_APP_API_URL ||
+        "https://ai-powered-smartinterview-portal.onrender.com";
 
-          const API_URL =
-            process.env.REACT_APP_API_URL ||
-            "https://ai-powered-smartinterview-portal.onrender.com";
+      const backendResponse = await fetch(`${API_URL}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
 
-          const backendResponse = await fetch(`${API_URL}/api/auth/google`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          });
+      if (!backendResponse.ok) throw new Error("Auth failed");
+      const data = await backendResponse.json();
 
-          if (!backendResponse.ok) throw new Error("Auth failed");
-          const data = await backendResponse.json();
+      setUserData(data.user);
+      localStorage.setItem("smart_interview_user", JSON.stringify(data.user));
 
-          setUserData(data.user);
-          localStorage.setItem("smart_interview_user", JSON.stringify(data.user));
-
-          setStatusPopup('login');
-          setTimeout(() => {
-            setStatusPopup(null);
-            setIsSigningIn(false);
-            onGetStarted();
-          }, 3500);
-        }
-      } catch (error) {
-        console.error("Redirect login error:", error);
+      setStatusPopup('login');
+      setTimeout(() => {
+        setStatusPopup(null);
         setIsSigningIn(false);
-      }
-    };
-
-    finishRedirectLogin();
-}, []);
-
-  // ✅ fix: this now only KICKS OFF the redirect — it does not expect
-  // a return value, since the page navigates away entirely.
-const handleGoogleAuth = async () => {
-  console.log("BUTTON CLICKED");
-  if (isSigningIn) return;
-  setIsSigningIn(true);
-  try {
-    console.log("Calling signInWithGoogle...");
-    await signInWithGoogle();
-    console.log("signInWithGoogle resolved (should not reach here on redirect)");
-  } catch (error) {
-    console.error("Caught error:", error);
-    setIsSigningIn(false);
-  }
-};
+        onGetStarted();
+      }, 3500);
+    } catch (error) {
+      console.error("Caught error:", error);
+      setIsSigningIn(false);
+    }
+  };
 
   const handleLogout = () => {
     setStatusPopup('logout');
@@ -177,7 +155,7 @@ const handleGoogleAuth = async () => {
                 </button>
               </div>
             ) : (
-              <button onClick={handleGoogleAuth} className="btn btn-primary bg-gradient-primary border-0 rounded-pill px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm btn-hover-lift">
+              <button onClick={handleGoogleAuth} disabled={isSigningIn} className="btn btn-primary bg-gradient-primary border-0 rounded-pill px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm btn-hover-lift">
                 {isSigningIn ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
                 Sign In With Google
               </button>
@@ -201,7 +179,7 @@ const handleGoogleAuth = async () => {
                 <p className="lead text-secondary mb-5 fs-5">
                   Answer real interview questions, get instant feedback, and build the confidence you need to land the job.
                 </p>
-                <button onClick={userData ? onGetStarted : handleGoogleAuth} className="btn btn-dark modern-dark-btn btn-lg rounded-pill px-5 py-3 fw-bold shadow-lg d-inline-flex align-items-center btn-hover-lift">
+                <button onClick={userData ? onGetStarted : handleGoogleAuth} disabled={isSigningIn} className="btn btn-dark modern-dark-btn btn-lg rounded-pill px-5 py-3 fw-bold shadow-lg d-inline-flex align-items-center btn-hover-lift">
                    {userData ? "Open Workspace" : "Get Started Now"} <ChevronRight size={20} className="ms-2" />
                 </button>
               </motion.div>
