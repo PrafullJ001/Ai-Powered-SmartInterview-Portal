@@ -150,11 +150,6 @@ export default function QAPage_temp({ role: propRole }) {
 
       if (!userId || !currentRole) throw new Error("Missing session data.");
 
-      console.log( {
-        userId,
-        role: currentRole,
-        questions: interviewData
-      });
 
       await getAIResults(userId, currentRole, interviewData);
 
